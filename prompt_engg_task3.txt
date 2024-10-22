@@ -1,0 +1,81 @@
+import torch
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
+from rouge_score import rouge_scorer
+import nltk
+nltk.download('punkt')
+
+# Initialize the summarization pipeline
+model_name = "facebook/bart-large-cnn"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+summarizer = pipeline("summarization", model=model, tokenizer=tokenizer)
+
+# Initialize ROUGE scorer
+scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
+
+# Sample text for summarization
+text = """
+The Internet of Things (IoT) is transforming the way we live and work. It refers to the interconnected network of physical devices, vehicles, home appliances, and other items embedded with electronics, software, sensors, and network connectivity, which enables these objects to collect and exchange data. The IoT allows for seamless communication between people, processes, and things. By 2025, it's estimated that there will be more than 75 billion IoT devices worldwide, creating a massive network of interconnected devices spanning everything from smartphones to automobiles. The potential applications of IoT technology are vast, including smart homes, wearable devices, smart cities, and industrial IoT (IIoT) in manufacturing and supply chain management. However, the IoT also raises concerns about data security and privacy, as the increased connectivity can potentially expose sensitive information to cyber threats.
+"""
+
+# Define different prompt designs
+prompts = [
+    "Summarize the following text:\n\n{}",
+    "Provide a brief summary of the main points in the following passage:\n\n{}",
+    "Create a concise summary that captures the key ideas of this text:\n\n{}",
+    "Distill the essence of the following text into a short summary:\n\n{}",
+    "Generate a summary that highlights the most important aspects of this passage:\n\n{}"
+]
+
+def generate_summary(prompt, text):
+    input_text = prompt.format(text)
+    summary = summarizer(input_text, max_length=150, min_length=50, do_sample=False)[0]['summary_text']
+    return summary
+
+def evaluate_summary(original_text, generated_summary):
+    # Calculate ROUGE scores
+    scores = scorer.score(original_text, generated_summary)
+    
+    # Calculate summary length
+    summary_length = len(nltk.word_tokenize(generated_summary))
+    
+    return scores, summary_length
+
+# Experiment with different prompts and evaluate results
+results = []
+
+for i, prompt in enumerate(prompts, 1):
+    print(f"\nPrompt {i}: {prompt.strip()}")
+    summary = generate_summary(prompt, text)
+    print(f"Generated Summary: {summary}")
+    
+    rouge_scores, summary_length = evaluate_summary(text, summary)
+    results.append({
+        'prompt': prompt,
+        'summary': summary,
+        'rouge_scores': rouge_scores,
+        'summary_length': summary_length
+    })
+    
+    print(f"ROUGE-1 F1-score: {rouge_scores['rouge1'].fmeasure:.4f}")
+    print(f"ROUGE-2 F1-score: {rouge_scores['rouge2'].fmeasure:.4f}")
+    print(f"ROUGE-L F1-score: {rouge_scores['rougeL'].fmeasure:.4f}")
+    print(f"Summary Length: {summary_length} words")
+
+# Find the best performing prompt based on ROUGE-L F1-score
+best_prompt = max(results, key=lambda x: x['rouge_scores']['rougeL'].fmeasure)
+
+print("\n--- Best Performing Prompt ---")
+print(f"Prompt: {best_prompt['prompt'].strip()}")
+print(f"Summary: {best_prompt['summary']}")
+print(f"ROUGE-L F1-score: {best_prompt['rouge_scores']['rougeL'].fmeasure:.4f}")
+print(f"Summary Length: {best_prompt['summary_length']} words")
+
+# Documentation of the process and results
+print("\n--- Process and Results Documentation ---")
+print("1. We designed five different prompts for the summarization task.")
+print("2. We used the BART-large-CNN model for summarization.")
+print("3. Each prompt was used to generate a summary of the given text.")
+print("4. We evaluated the summaries using ROUGE scores and summary length.")
+print("5. The best performing prompt was selected based on the highest ROUGE-L F1-score.")
+print("\nConclusion: The experiment shows how different prompt designs can affect the quality of generated summaries. The best performing prompt can be used for future summarization tasks with this model.")

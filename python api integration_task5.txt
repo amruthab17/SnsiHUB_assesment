@@ -1,0 +1,68 @@
+import requests
+import numpy as np
+
+def get_text_embeddings(texts, model_id, api_token):
+    """
+    Get embeddings for a list of texts using HuggingFace API.
+    
+    Args:
+        texts (list): List of texts to get embeddings for
+        model_id (str): HuggingFace model ID
+        api_token (str): API authentication token
+    
+    Returns:
+        dict: Contains embeddings and status
+    """
+    # API endpoint and headers
+    api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_id}"
+    headers = {"Authorization": f"Bearer {api_token}"}
+    
+    try:
+        # Make API request
+        response = requests.post(
+            api_url,
+            headers=headers,
+            json={"inputs": texts, "options": {"wait_for_model": True}}
+        )
+        
+        # Check if request was successful
+        response.raise_for_status()
+        
+        # Convert response to numpy array
+        embeddings = np.array(response.json())
+        
+        return {
+            "status": "success",
+            "embeddings": embeddings,
+            "shape": embeddings.shape
+        }
+        
+    except requests.exceptions.RequestException as e:
+        return {
+            "status": "error",
+            "message": f"API request failed: {str(e)}"
+        }
+
+# Example usage
+if __name__ == "__main__":
+    # Configuration
+    MODEL_ID = "sentence-transformers/all-MiniLM-L6-v2"
+    API_TOKEN = "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"
+    
+    # Sample texts
+    texts = [
+        "How do I get a replacement Medicare card?",
+        "What is the monthly premium for Medicare Part B?"
+    ]
+    
+    # Get embeddings
+    result = get_text_embeddings(texts, MODEL_ID, API_TOKEN)
+    
+    # Display results
+    if result["status"] == "success":
+        print("\nEmbeddings generated successfully!")
+        print(f"Shape: {result['shape']}")
+        print("\nFirst 5 values of first embedding:")
+        print(result["embeddings"][0][:5])
+    else:
+        print(f"\nError: {result['message']}")

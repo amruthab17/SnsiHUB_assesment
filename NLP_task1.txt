@@ -1,0 +1,159 @@
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+import re
+import string
+from textblob import TextBlob
+
+def download_nltk_resources():
+    """
+    Download necessary NLTK resources.
+    """
+    resources = ['stopwords', 'wordnet']
+    for resource in resources:
+        try:
+            nltk.download(resource, quiet=True)
+        except Exception as e:
+            print(f"Error downloading {resource}: {str(e)}")
+
+# Download NLTK resources
+download_nltk_resources()
+
+# Chat word dictionary
+abbreviations = [
+    "AFAIK", "AFK", "ASAP", "ATK", "ATM", "A3", "BAK", "BBL", "BBS", "BFN", "B4N",
+    "BRB", "BRT", "BTW", "B4", "CU", "CUL8R", "CYA", "FAQ", "FC", "FWIW", "FYI", "GAL",
+    "GG", "GN", "GMTA", "GR8", "G9", "IC", "ICQ", "ILU", "IMHO", "IMO", "IOW", "IRL", "KISS",
+    "LDR", "LMAO", "LOL", "LTNS", "L8R", "MTE", "M8", "NRN", "OIC", "PITA", "PRT", "PRW",
+    "QPSA?", "ROFL", "ROFLOL", "ROTFLMAO", "SK8", "STATS", "ASL", "THX", "TTFN", "TTYL", "U",
+    "U2", "U4E", "WB", "WTF", "WTG", "WUF", "W8", "7K", "TFW", "MFW", "MRW", "IFYP",
+    "JK", "IDC", "ILY", "IMU", "ADIH", "ZZZ", "WYWH", "TIME", "BAE", "FIMH", "BSAAW", "BWL"
+]
+meanings = [
+    "As Far As I Know", "Away From Keyboard", "As Soon As Possible", "At The Keyboard",
+    "At The Moment", "Anytime, Anywhere, Anyplace", "Back At Keyboard", "Be Back Later",
+    "Be Back Soon", "Bye For Now", "Bye For Now", "Be Right Back", "Be Right There", "By The Way",
+    "Before", "See You", "See You Later", "See You", "Frequently Asked Questions", "Fingers Crossed",
+    "For What It's Worth", "For Your Information", "Get A Life", "Good Game", "Good Night",
+    "Great Minds Think Alike", "Great!", "Genius", "I See", "I Seek you (also a chat program)",
+    "I Love You", "In My Honest/Humble Opinion", "In My Opinion", "In Other Words", "In Real Life",
+    "Keep It Simple, Stupid", "Long Distance Relationship", "Laugh My A.. Off", "Laughing Out Loud",
+    "Long Time No See", "Later", "My Thoughts Exactly", "Mate", "No Reply Necessary", "Oh I See",
+    "Pain In The A..", "Party", "Parents Are Watching", "Que Pasa?", "Rolling On The Floor Laughing",
+    "Rolling On The Floor Laughing Out Loud", "Rolling On The Floor Laughing My A.. Off", "Skate",
+    "Your sex and age", "Age, Sex, Location", "Thank You", "Ta-Ta For Now!", "Talk To You Later",
+    "You", "You Too", "Yours For Ever", "Welcome Back", "What The F...", "Way To Go!", "Where Are You From?",
+    "Wait...", "Sick:-D Laugher", "That feeling when", "My face when", "My reaction when", "I feel your pain",
+    "Just kidding", "I don't care", "I love you", "I miss you", "Another day in hell", "Sleeping, bored, tired",
+    "Wish you were here", "Tears in my eyes", "Before anyone else", "Fire in my heart", "Big smile across my whole face", "Bursting with laughter"
+]
+abbr_dict = dict(zip(abbreviations, meanings))
+
+def simple_tokenize(text):
+    """
+    A simple tokenization function that splits on whitespace and punctuation.
+    """
+    return re.findall(r'\b\w+\b', text.lower())
+
+def spelling_correction(text):
+    """
+    Correct spelling using TextBlob.
+    """
+    return TextBlob(text).correct().string
+
+def chatwords(text):
+    """
+    Replace chat abbreviations with their meanings.
+    """
+    return ' '.join(abbr_dict.get(word.upper(), word) for word in text.split())
+
+def remove_punc(text):
+    """
+    Remove punctuation from text.
+    """
+    return text.translate(str.maketrans('', '', string.punctuation))
+
+def remove_html_tags(text):
+    """
+    Remove HTML tags from text.
+    """
+    return re.sub(r'<[^>]*>', '', text)
+
+def preprocess_and_tokenize(text):
+    """
+    Preprocess and tokenize the input text.
+    
+    Args:
+    text (str): Input text to be preprocessed and tokenized.
+    
+    Returns:
+    list: A list of preprocessed and tokenized words.
+    """
+    try:
+        # Remove HTML tags
+        text = remove_html_tags(text)
+        
+        # Spelling correction
+        text = spelling_correction(text)
+        
+        # Chat word treatment
+        text = chatwords(text)
+        
+        # Convert to lowercase
+        text = text.lower()
+        
+        # Remove URLs
+        text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
+        
+        # Remove numbers
+        text = re.sub(r'\d+', '', text)
+        
+        # Remove punctuation
+        text = remove_punc(text)
+        
+        # Tokenize the text
+        tokens = simple_tokenize(text)
+        
+        # Remove stopwords
+        stop_words = set(stopwords.words('english'))
+        tokens = [token for token in tokens if token not in stop_words]
+        
+        # Lemmatization
+        lemmatizer = WordNetLemmatizer()
+        tokens = [lemmatizer.lemmatize(token) for token in tokens]
+        
+        # Remove empty tokens
+        tokens = [token for token in tokens if token.strip()]
+        
+        return tokens
+    except Exception as e:
+        print(f"Error in preprocessing and tokenization: {str(e)}")
+        return []
+
+# Example usage with a diverse sample text
+if __name__ == "__main__":
+    sample_text = """
+    <p>Hellu, how r youu doing in the summerz? FYI, NLP is gr8 4 text analysis!</p>
+
+    Natural Language Processing (NLP) is a subfield of A.I. that focuses on the interaction b/w computers &amp; humans using natural language. The ultimate objective of NLP is 2 read, decipher, understand, and make sense of human language in a valuable way.
+
+    Visit https://www.example.com/nlp for more info on NLP techniques &amp; applications. IMHO, it's a fascinating field! LOL :)
+
+    Some key NLP tasks include:
+    1. Tokenization: Breaking down text into individual words/phrases.
+    2. POS tagging: Identifying grammatical parts of speech.
+    3. NER: Identifying &amp; classifying named entities (e.g., person names, orgs) in text.
+    4. Sentiment analysis: Determining the sentiment/emotion expressed.
+    5. Machine translation: Automatically translating text from 1 language 2 another.
+
+    As NLP continues 2 evolve, it promises 2 bridge the gap b/w human communication &amp; computer understanding, opening up new possibilities 4 human-computer interaction &amp; data analysis. TTYL!
+    """
+
+    print("Original text:")
+    print(sample_text)
+    
+    processed_tokens = preprocess_and_tokenize(sample_text)
+    
+    print("\nNumber of tokens after preprocessing:", len(processed_tokens))
+    print("\nProcessed tokens:")
+    print(processed_tokens)
