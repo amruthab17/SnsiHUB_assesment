@@ -47,7 +47,7 @@ def get_text_embeddings(texts, model_id, api_token):
 if __name__ == "__main__":
     # Configuration
     MODEL_ID = "sentence-transformers/all-MiniLM-L6-v2"
-    API_TOKEN = "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"
+    API_TOKEN = "paste your API token here"
     
     # Sample texts
     texts = [
